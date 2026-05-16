@@ -174,3 +174,9 @@ export YAS_NAMESPACE="yas-13"
 helm list -n "$YAS_NAMESPACE" -q | xargs -r helm uninstall -n "$YAS_NAMESPACE"
 kubectl delete ns "$YAS_NAMESPACE" --ignore-not-found=true
 ```
+
+## 6. Apply ArgoCD
+```bash
+kubectl apply -f root-app-dev.yaml
+kubectl apply -f root-app-staging.yaml
+```
