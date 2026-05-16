@@ -177,6 +177,7 @@ kubectl delete ns "$YAS_NAMESPACE" --ignore-not-found=true
 
 ## 6. Apply ArgoCD
 ```bash
+cd k8s-cd/deploy
 kubectl apply -f root-app-dev.yaml
 kubectl apply -f root-app-staging.yaml
 ```
