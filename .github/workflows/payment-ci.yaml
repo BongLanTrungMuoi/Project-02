@@ -36,15 +36,13 @@ jobs:
 
       - name: Set Docker Tag
         run: |
-          if [ "${{ github.ref_name }}" == "main" ]; then
-            echo "DOCKER_TAG=latest" >> $GITHUB_ENV
-          else
-            echo "DOCKER_TAG=${{ github.sha }}" >> $GITHUB_ENV
-          fi
+          echo "DOCKER_SHA=$(echo ${{ github.sha }} | cut -c1-7)" >> $GITHUB_ENV
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v6
         with:
           context: ./payment
           push: true
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/yas-payment:${{ env.DOCKER_TAG }}
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/yas-payment:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/yas-payment:${{ env.DOCKER_SHA }}

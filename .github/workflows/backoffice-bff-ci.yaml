@@ -12,7 +12,7 @@ on:
       - ".github/workflows/backoffice-bff-ci.yaml"
       - "pom.xml"
   pull_request:
-    branches: [ "main" ]
+    branches: ["main"]
     paths:
       - "backoffice-bff/**"
       - ".github/workflows/actions/action.yaml"
@@ -36,15 +36,37 @@ jobs:
 
       - name: Set Docker Tag
         run: |
-          if [ "${{ github.ref_name }}" == "main" ]; then
-            echo "DOCKER_TAG=latest" >> $GITHUB_ENV
-          else
-            echo "DOCKER_TAG=${{ github.sha }}" >> $GITHUB_ENV
-          fi
+          echo "DOCKER_SHA=$(echo ${{ github.sha }} | cut -c1-7)" >> $GITHUB_ENV
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v6
         with:
           context: ./backoffice-bff
           push: true
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/yas-backoffice-bff:${{ env.DOCKER_TAG }}
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/yas-backoffice-bff:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/yas-backoffice-bff:${{ env.DOCKER_SHA }}
+
+      - name: Generate GitHub App Token
+        id: generate_token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+
+      - name: Update GitOps Repo
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: |
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
+          git clone https://x-access-token:${{ steps.generate_token.outputs.token }}@github.com/${{ github.repository_owner }}/yas-gitops.git
+          cd yas-gitops
+          yq -i '.services."backoffice-bff".tag = "${{ env.DOCKER_SHA }}"' values-dev.yaml
+          if git diff --quiet; then
+            echo "No changes to commit"
+          else
+            git add values-dev.yaml
+            git commit -m "deploy: update backoffice-bff image to ${{ env.DOCKER_SHA }} [skip ci]"
+            git push origin main
+          fi
