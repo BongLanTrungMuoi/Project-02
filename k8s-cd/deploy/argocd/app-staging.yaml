@@ -10,7 +10,7 @@ spec:
   source:
     repoURL: "https://github.com/BongLanTrungMuoi/Project-02.git"
     targetRevision: main
-    path: k8s-cd/deploy/argocd/repo-gitops
+    path: k8s-cd/charts
     helm:
       valueFiles:
         - values-staging.yaml
