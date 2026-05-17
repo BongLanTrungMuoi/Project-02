@@ -8,9 +8,9 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: "https://github.com/BongLanTrungMuoi/Project-02.git"
+    repoURL: "https://github.com/BongLanTrungMuoi/yas-gitops.git"
     targetRevision: main
-    path: k8s-cd/charts
+    path: .
     helm:
       valueFiles:
         - values-staging.yaml
