@@ -8,9 +8,9 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: "https://github.com/BongLanTrungMuoi/Project-02.git"
+    repoURL: "https://github.com/BongLanTrungMuoi/yas-gitops.git"
     targetRevision: main
-    path: k8s-cd/deploy/argocd/repo-gitops
+    path: .
     helm:
       valueFiles:
         - value-dev.yaml

@@ -33,7 +33,32 @@ By default, `02-setup-service-mesh.sh` prepares `yas-dev` and `yas-staging` for 
 Sau bước này, Argo CD tự deploy phần data layer và application layer thay cho script `03` và `04`.
 Các script manual cũ được giữ lại ở `save-03-setup-data-layer.sh` và `save-04-deploy-apps.sh` để dùng khi cần fallback/debug.
 
-## 2. Service Mesh / Kiali sau khi deploy
+## 2. Mở Dashboard ArgoCD
+
+Để truy cập giao diện quản trị ArgoCD Dashboard:
+
+```bash
+./scripts/open-argocd.sh
+```
+
+Hoặc chạy lệnh thủ công để port-forward:
+
+```bash
+kubectl port-forward svc/argocd-server -n argocd 8080:80
+```
+
+Sau đó, truy cập bằng trình duyệt tại địa chỉ:
+```text
+http://localhost:8080
+```
+
+- **Username**: `admin`
+- **Password** (Lấy tự động từ script hoặc chạy lệnh dưới đây):
+  ```bash
+  kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
+  ```
+
+## 3. Service Mesh / Kiali sau khi deploy
 
 Các manifest mTLS, retry, authorization policy và Prometheus monitor cho Kiali được apply trong:
 
@@ -83,7 +108,7 @@ Nếu cần đổi:
 YAS_NAMESPACE=yas-52 ENV_TAG=dev-52 COUNT=60 SLEEP_SECONDS=1 ./istio/script/generate-kiali-traffic.sh
 ```
 
-## 3. Evidence cho yêu cầu Service Mesh
+## 4. Evidence cho yêu cầu Service Mesh
 
 Chạy script này để tạo pod test, bắn traffic và ghi log evidence:
 
@@ -139,7 +164,7 @@ retry-test -> product
 retry-test -> retry-flaky
 ```
 
-## 4. Cấu hình Local DNS (Mapping Domain)
+## 5. Cấu hình Local DNS (Mapping Domain)
 
 ```bash
 kubectl get nodes -o wide
@@ -174,7 +199,7 @@ sudo nano /etc/hosts
 192.168.49.2 grafana.yas.local.com
 ```
 
-## 5. Teardown & Cleanup (Dọn dẹp cụm)
+## 6. Teardown & Cleanup (Dọn dẹp cụm)
 
 Để gỡ bỏ toàn bộ hệ thống một cách sạch sẽ:
 
@@ -184,7 +209,7 @@ helm list -n "$YAS_NAMESPACE" -q | xargs -r helm uninstall -n "$YAS_NAMESPACE"
 kubectl delete ns "$YAS_NAMESPACE" --ignore-not-found=true
 ```
 
-## 6. Apply ArgoCD Root Apps Manually
+## 7. Apply ArgoCD Root Apps Manually
 ```bash
 cd k8s-cd/deploy
 kubectl apply -f argocd/app-dev.yaml
