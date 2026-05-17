@@ -3,6 +3,7 @@ set -euo pipefail
 set -x
 
 MESH_NAMESPACES="${YAS_MESH_NAMESPACES:-yas-dev yas-staging}"
+ENABLE_OBSERVABILITY="${ENABLE_OBSERVABILITY:-false}"
 
 echo ">>> Creating mesh namespace(s) $MESH_NAMESPACES (if not exists)..."
 for ns in $MESH_NAMESPACES; do
@@ -19,15 +20,19 @@ helm upgrade --install istio-base istio/base -n istio-system --create-namespace 
 echo ">>> Installing Istiod..."
 helm upgrade --install istiod istio/istiod -n istio-system --wait
 
-echo ">>> Installing Kiali Server for Topology visualization..."
-helm repo add kiali https://kiali.org/helm-charts
-helm repo update
-# Installing latest stable Kiali
-helm upgrade --install kiali-server kiali/kiali-server \
-  --namespace istio-system \
-  --set auth.strategy="anonymous" \
-  --set external_services.prometheus.url="http://prometheus-kube-prometheus-prometheus.observability.svc.cluster.local:9090" \
-  --wait
+if [ "$ENABLE_OBSERVABILITY" = "true" ]; then
+  echo ">>> Installing Kiali Server for Topology visualization..."
+  helm repo add kiali https://kiali.org/helm-charts
+  helm repo update
+  # Installing latest stable Kiali
+  helm upgrade --install kiali-server kiali/kiali-server \
+    --namespace istio-system \
+    --set auth.strategy="anonymous" \
+    --set external_services.prometheus.url="http://prometheus-kube-prometheus-prometheus.observability.svc.cluster.local:9090" \
+    --wait
+else
+  echo ">>> Skipping Kiali. Set ENABLE_OBSERVABILITY=true to install Kiali and telemetry monitors."
+fi
 
 echo ">>> Enabling automatic sidecar injection for mesh namespace(s): $MESH_NAMESPACES..."
 for ns in $MESH_NAMESPACES; do
@@ -44,7 +49,10 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # Read configuration value from cluster-config.yaml file to construct default hosts.
 BASE_DOMAIN=$(yq -r '.domain' "$SCRIPT_DIR/cluster-config.yaml")
 
-ISTIO_CONFIGS=("ingress-mtls.yaml" "mtls.yaml" "destination-rule.yaml" "keycloak-internal-dns.yaml" "telemetry-monitor.yaml" "virtual-service-retry-template.yaml" "auth-policy.yaml")
+ISTIO_CONFIGS=("ingress-mtls.yaml" "mtls.yaml" "destination-rule.yaml" "keycloak-internal-dns.yaml" "virtual-service-retry-template.yaml" "auth-policy.yaml")
+if [ "$ENABLE_OBSERVABILITY" = "true" ]; then
+  ISTIO_CONFIGS+=("telemetry-monitor.yaml")
+fi
 
 for ns in $MESH_NAMESPACES; do
   NS_DOMAIN="$BASE_DOMAIN"
@@ -77,5 +85,5 @@ for ns in $MESH_NAMESPACES; do
   done
 done
 
-echo ">>> Xong Giai đoạn 2: Cài đặt Service Mesh (Istio), Kiali và áp dụng Policies."
+echo ">>> Xong Giai đoạn 2: Cài đặt Service Mesh (Istio) và áp dụng Policies. ENABLE_OBSERVABILITY=$ENABLE_OBSERVABILITY."
 sleep 50

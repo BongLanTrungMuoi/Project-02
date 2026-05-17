@@ -1,13 +1,17 @@
 #!/bin/bash
 set -x
 
+ENABLE_OBSERVABILITY="${ENABLE_OBSERVABILITY:-false}"
+
 # Add chart repos and update
 helm repo add postgres-operator-charts https://opensource.zalando.com/postgres-operator/charts/postgres-operator
 helm repo add strimzi https://strimzi.io/charts/
 helm repo add elastic https://helm.elastic.co
-helm repo add grafana https://grafana.github.io/helm-charts
-helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
-helm repo add open-telemetry https://open-telemetry.github.io/opentelemetry-helm-charts
+if [ "$ENABLE_OBSERVABILITY" = "true" ]; then
+  helm repo add grafana https://grafana.github.io/helm-charts
+  helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+  helm repo add open-telemetry https://open-telemetry.github.io/opentelemetry-helm-charts
+fi
 helm repo add jetstack https://charts.jetstack.io
 helm repo update
 
@@ -41,44 +45,48 @@ helm upgrade --install kafka-operator strimzi/strimzi-kafka-operator \
 helm upgrade --install elastic-operator elastic/eck-operator \
  --create-namespace --namespace elasticsearch
 
-# Install opentelemetry-operator
-helm upgrade --install opentelemetry-operator open-telemetry/opentelemetry-operator \
---create-namespace --namespace observability
+if [ "$ENABLE_OBSERVABILITY" = "true" ]; then
+  # Install opentelemetry-operator
+  helm upgrade --install opentelemetry-operator open-telemetry/opentelemetry-operator \
+  --create-namespace --namespace observability
 
-# Wait for OpenTelemetry Operator to be ready
-kubectl wait --for=condition=available --timeout=120s deployment/opentelemetry-operator -n observability
-sleep 10
+  # Wait for OpenTelemetry Operator to be ready
+  kubectl wait --for=condition=available --timeout=120s deployment/opentelemetry-operator -n observability
+  sleep 10
 
-# Install opentelemetry-collector
-helm upgrade --install opentelemetry-collector ./observability/opentelemetry \
---create-namespace --namespace observability
+  # Install opentelemetry-collector
+  helm upgrade --install opentelemetry-collector ./observability/opentelemetry \
+  --create-namespace --namespace observability
 
-# Install loki
-helm upgrade --install loki grafana/loki \
- --create-namespace --namespace observability \
- -f ./observability/loki.values.yaml \
- --set loki.useTestSchema=true
+  # Install loki
+  helm upgrade --install loki grafana/loki \
+   --create-namespace --namespace observability \
+   -f ./observability/loki.values.yaml \
+   --set loki.useTestSchema=true
 
-# Install tempo
-helm upgrade --install tempo grafana/tempo \
---create-namespace --namespace observability \
--f ./observability/tempo.values.yaml
+  # Install tempo
+  helm upgrade --install tempo grafana/tempo \
+  --create-namespace --namespace observability \
+  -f ./observability/tempo.values.yaml
 
-# Install promtail
-helm upgrade --install promtail grafana/promtail \
---create-namespace --namespace observability \
---values ./observability/promtail.values.yaml
+  # Install promtail
+  helm upgrade --install promtail grafana/promtail \
+  --create-namespace --namespace observability \
+  --values ./observability/promtail.values.yaml
 
-# Install prometheus + grafana
-grafana_hostname="grafana.$DOMAIN" yq -i '.hostname=env(grafana_hostname)' ./observability/prometheus.values.yaml
-helm upgrade --install prometheus prometheus-community/kube-prometheus-stack \
- --create-namespace --namespace observability \
--f ./observability/prometheus.values.yaml
+  # Install prometheus + grafana
+  grafana_hostname="grafana.$DOMAIN" yq -i '.hostname=env(grafana_hostname)' ./observability/prometheus.values.yaml
+  helm upgrade --install prometheus prometheus-community/kube-prometheus-stack \
+   --create-namespace --namespace observability \
+  -f ./observability/prometheus.values.yaml
 
-# Install grafana operator
-helm upgrade --install grafana-operator oci://ghcr.io/grafana-operator/helm-charts/grafana-operator \
---version v5.0.2 \
---create-namespace --namespace observability
+  # Install grafana operator
+  helm upgrade --install grafana-operator oci://ghcr.io/grafana-operator/helm-charts/grafana-operator \
+  --version v5.0.2 \
+  --create-namespace --namespace observability
+else
+  echo ">>> Skipping Observability stack. Set ENABLE_OBSERVABILITY=true to install OpenTelemetry, Loki, Tempo, Promtail, Prometheus, and Grafana."
+fi
 
 # Install keycloak operator
 kubectl apply -f https://raw.githubusercontent.com/keycloak/keycloak-k8s-resources/26.0.2/kubernetes/keycloaks.k8s.keycloak.org-v1.yml
@@ -86,12 +94,14 @@ kubectl apply -f https://raw.githubusercontent.com/keycloak/keycloak-k8s-resourc
 kubectl create namespace keycloak || true
 kubectl apply -f ./keycloak/operator.yaml
 
-# Add datasource and dashboard to grafana
-helm upgrade --install grafana ./observability/grafana \
---create-namespace --namespace observability \
---set hotname="grafana.$DOMAIN" \
---set grafana.username="$GRAFANA_USERNAME" \
---set grafana.password="$GRAFANA_PASSWORD"
+if [ "$ENABLE_OBSERVABILITY" = "true" ]; then
+  # Add datasource and dashboard to grafana
+  helm upgrade --install grafana ./observability/grafana \
+  --create-namespace --namespace observability \
+  --set hotname="grafana.$DOMAIN" \
+  --set grafana.username="$GRAFANA_USERNAME" \
+  --set grafana.password="$GRAFANA_PASSWORD"
+fi
 
-echo ">>> Xong Giai đoạn 1: Các Operator và Observability đã được cài đặt vào các namespace độc lập."
+echo ">>> Xong Giai đoạn 1: Các Operator đã được cài đặt. ENABLE_OBSERVABILITY=$ENABLE_OBSERVABILITY."
 sleep 50
