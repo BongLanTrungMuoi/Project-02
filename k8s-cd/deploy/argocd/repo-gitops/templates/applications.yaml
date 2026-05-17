@@ -229,7 +229,7 @@ metadata:
 spec:
   project: {{ $project }}
   source:
-    repoURL: https://charts.bitnami.com/bitnami
+    repoURL: oci://registry-1.docker.io/bitnamicharts
     chart: redis
     targetRevision: {{ .Values.infra.redis.chartVersion | quote }}
     helm:
