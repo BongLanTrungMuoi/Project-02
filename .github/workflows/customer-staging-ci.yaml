@@ -1,3 +1,5 @@
+#customer-staging-ci.yaml
+
 name: customer service staging ci
 
 on:
@@ -19,7 +21,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 2          # need parent commit to diff paths
+          fetch-depth: 2 # need parent commit to diff paths
       - uses: ./.github/workflows/actions
 
       - name: Check if service files changed
