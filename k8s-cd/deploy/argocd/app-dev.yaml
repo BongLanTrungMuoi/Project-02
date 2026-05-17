@@ -13,7 +13,7 @@ spec:
     path: k8s-cd/deploy/argocd/repo-gitops
     helm:
       valueFiles:
-        - values-dev.yaml
+        - value-dev.yaml
   destination:
     server: "https://kubernetes.default.svc"
     namespace: argocd

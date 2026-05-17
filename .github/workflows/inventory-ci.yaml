@@ -64,11 +64,11 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git clone https://x-access-token:${{ steps.generate_token.outputs.token }}@github.com/${{ github.repository_owner }}/yas-gitops.git
           cd yas-gitops
-          yq -i '.services.inventory.tag = "${{ env.DOCKER_SHA }}"' values-dev.yaml
+          yq -i '.services.inventory.tag = "${{ env.DOCKER_SHA }}"' value-dev.yaml
           if git diff --quiet; then
             echo "No changes to commit"
           else
-            git add values-dev.yaml
+            git add value-dev.yaml
             git commit -m "deploy: update inventory image to ${{ env.DOCKER_SHA }} [skip ci]"
             git push origin main
           fi
