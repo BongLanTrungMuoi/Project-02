@@ -1,19 +1,19 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: yas-root-dev
+  name: yas-root-staging
   namespace: argocd
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
   project: default
   source:
-    repoURL: "https://github.com/BongLanTrungMuoi/yas-gitops.git"
+    repoURL: "https://github.com/BongLanTrungMuoi/Project-02.git"
     targetRevision: main
-    path: .
+    path: k8s-cd/deploy/argocd/repo-gitops
     helm:
       valueFiles:
-        - values-dev.yaml
+        - values-staging.yaml
   destination:
     server: "https://kubernetes.default.svc"
     namespace: argocd

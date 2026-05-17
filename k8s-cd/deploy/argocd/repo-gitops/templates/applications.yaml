@@ -1,0 +1,568 @@
+{{- $envTag := .Values.envTag | default "" -}}
+{{- $nameTag := index (splitList "-" $envTag) 0 -}}
+{{- if not $envTag }}{{- $nameTag = "default" -}}{{- end -}}
+{{- $domain := .Values.domain -}}
+{{- $namespace := .Values.namespace -}}
+{{- $infraNamespace := .Values.infraNamespace -}}
+{{- $repoURL := .Values.repoURL -}}
+{{- $targetRevision := .Values.targetRevision -}}
+{{- $project := .Values.global.project | default "default" -}}
+{{- $destinationServer := .Values.global.destinationServer | default "https://kubernetes.default.svc" -}}
+{{- $appImageTag := .Values.global.image.tag -}}
+{{- $identityHost := printf "identity-%s.%s" $envTag $domain -}}
+{{- $pgadminHost := printf "pgadmin-%s.%s" $envTag $domain -}}
+{{- $akhqHost := printf "akhq-%s.%s" $envTag $domain -}}
+{{- $kibanaHost := printf "kibana-%s.%s" $envTag $domain -}}
+{{- $backofficeHost := printf "backoffice-%s.%s" $envTag $domain -}}
+{{- $storefrontHost := printf "storefront-%s.%s" $envTag $domain -}}
+{{- $apiHost := printf "api-%s.%s" $envTag $domain -}}
+{{- if not $envTag }}
+  {{- $identityHost = printf "identity.%s" $domain -}}
+  {{- $pgadminHost = printf "pgadmin.%s" $domain -}}
+  {{- $akhqHost = printf "akhq.%s" $domain -}}
+  {{- $kibanaHost = printf "kibana.%s" $domain -}}
+  {{- $backofficeHost = printf "backoffice.%s" $domain -}}
+  {{- $storefrontHost = printf "storefront.%s" $domain -}}
+  {{- $apiHost = printf "api.%s" $domain -}}
+{{- end }}
+
+# --- Phase 03: data layer ---
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: postgres-{{ $nameTag }}
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-30"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: {{ $project }}
+  source:
+    repoURL: {{ $repoURL }}
+    targetRevision: {{ $targetRevision }}
+    path: k8s-cd/deploy/postgres/postgresql
+    helm:
+      parameters:
+        - name: replicas
+          value: {{ .Values.infra.postgresql.replicas | quote }}
+        - name: username
+          value: {{ .Values.infra.postgresql.username | quote }}
+        - name: password
+          value: {{ .Values.infra.postgresql.password | quote }}
+  destination:
+    server: {{ $destinationServer | quote }}
+    namespace: {{ $infraNamespace }}
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    managedNamespaceMetadata:
+      labels:
+        istio-injection: enabled
+    syncOptions:
+      - CreateNamespace=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: pgadmin-{{ $nameTag }}
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-20"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: {{ $project }}
+  source:
+    repoURL: {{ $repoURL }}
+    targetRevision: {{ $targetRevision }}
+    path: k8s-cd/deploy/postgres/pgadmin
+    helm:
+      parameters:
+        - name: hostname
+          value: {{ $pgadminHost }}
+        - name: ingress.hosts[0].host
+          value: {{ $pgadminHost }}
+  destination:
+    server: {{ $destinationServer | quote }}
+    namespace: {{ $infraNamespace }}
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: zookeeper-{{ $nameTag }}
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-30"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: {{ $project }}
+  source:
+    repoURL: {{ $repoURL }}
+    targetRevision: {{ $targetRevision }}
+    path: k8s-cd/deploy/zookeeper
+  destination:
+    server: {{ $destinationServer | quote }}
+    namespace: {{ $infraNamespace }}
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    managedNamespaceMetadata:
+      labels:
+        istio-injection: enabled
+    syncOptions:
+      - CreateNamespace=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kafka-cluster-{{ $nameTag }}
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-20"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: {{ $project }}
+  source:
+    repoURL: {{ $repoURL }}
+    targetRevision: {{ $targetRevision }}
+    path: k8s-cd/deploy/kafka/kafka-cluster
+    helm:
+      parameters:
+        - name: kafka.replicas
+          value: {{ .Values.infra.kafka.replicas | quote }}
+        - name: zookeeper.replicas
+          value: {{ .Values.infra.zookeeper.replicas | quote }}
+        - name: postgresql.username
+          value: {{ .Values.infra.postgresql.username | quote }}
+        - name: postgresql.password
+          value: {{ .Values.infra.postgresql.password | quote }}
+  destination:
+    server: {{ $destinationServer | quote }}
+    namespace: {{ $infraNamespace }}
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: akhq-{{ $nameTag }}
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-10"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: {{ $project }}
+  sources:
+    - repoURL: https://akhq.io/
+      chart: akhq
+      targetRevision: {{ .Values.infra.akhq.chartVersion | quote }}
+      helm:
+        valueFiles:
+          - $values/k8s-cd/deploy/kafka/akhq.values.yaml
+        parameters:
+          - name: hostname
+            value: {{ $akhqHost }}
+          - name: ingress.hosts[0]
+            value: {{ $akhqHost }}
+    - repoURL: {{ $repoURL }}
+      targetRevision: {{ $targetRevision }}
+      ref: values
+  destination:
+    server: {{ $destinationServer | quote }}
+    namespace: {{ $infraNamespace }}
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: elasticsearch-cluster-{{ $nameTag }}
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-20"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: {{ $project }}
+  source:
+    repoURL: {{ $repoURL }}
+    targetRevision: {{ $targetRevision }}
+    path: k8s-cd/deploy/elasticsearch/elasticsearch-cluster
+    helm:
+      parameters:
+        - name: elasticsearch.replicas
+          value: {{ .Values.infra.elasticsearch.replicas | quote }}
+        - name: kibana.ingress.hostname
+          value: {{ $kibanaHost }}
+  destination:
+    server: {{ $destinationServer | quote }}
+    namespace: {{ $infraNamespace }}
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: redis-{{ $nameTag }}
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-20"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: {{ $project }}
+  source:
+    repoURL: https://charts.bitnami.com/bitnami
+    chart: redis
+    targetRevision: {{ .Values.infra.redis.chartVersion | quote }}
+    helm:
+      parameters:
+        - name: auth.password
+          value: {{ .Values.infra.redis.password | quote }}
+  destination:
+    server: {{ $destinationServer | quote }}
+    namespace: {{ $infraNamespace }}
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: keycloak-{{ $nameTag }}
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-10"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: {{ $project }}
+  source:
+    repoURL: {{ $repoURL }}
+    targetRevision: {{ $targetRevision }}
+    path: k8s-cd/deploy/keycloak/keycloak
+    helm:
+      parameters:
+        - name: hostname
+          value: {{ $identityHost }}
+        - name: postgresql.username
+          value: {{ .Values.infra.postgresql.username | quote }}
+        - name: postgresql.password
+          value: {{ .Values.infra.postgresql.password | quote }}
+        - name: bootstrapAdmin.username
+          value: {{ .Values.infra.keycloak.bootstrapAdmin.username | quote }}
+        - name: bootstrapAdmin.password
+          value: {{ .Values.infra.keycloak.bootstrapAdmin.password | quote }}
+        - name: backofficeRedirectUrl
+          value: {{ printf "https://%s" $backofficeHost | quote }}
+        - name: storefrontRedirectUrl
+          value: {{ printf "https://%s" $storefrontHost | quote }}
+        - name: apiRedirectUrl
+          value: {{ printf "https://%s" $apiHost | quote }}
+        - name: global.domain
+          value: {{ $domain }}
+        - name: global.envTag
+          value: {{ $envTag | quote }}
+  destination:
+    server: {{ $destinationServer | quote }}
+    namespace: {{ $infraNamespace }}
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+
+# --- Phase 04: application layer ---
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: yas-configuration-{{ $nameTag }}
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: {{ $project }}
+  source:
+    repoURL: {{ $repoURL }}
+    targetRevision: {{ $targetRevision }}
+    path: k8s-cd/charts/yas-configuration
+    helm:
+      parameters:
+        - name: global.domain
+          value: {{ $domain }}
+        - name: global.envTag
+          value: {{ $envTag | quote }}
+        - name: credentials.postgresql.username
+          value: {{ .Values.infra.postgresql.username | quote }}
+        - name: credentials.postgresql.password
+          value: {{ .Values.infra.postgresql.password | quote }}
+        - name: credentials.redis.password
+          value: {{ .Values.infra.redis.password | quote }}
+        - name: applicationConfig.spring.kafka.bootstrap-servers
+          value: "kafka-cluster-kafka-bootstrap.{{ $infraNamespace }}.svc.cluster.local:9092"
+        - name: applicationConfig.spring.kafka.consumer.bootstrap-servers
+          value: "kafka-cluster-kafka-bootstrap.{{ $infraNamespace }}.svc.cluster.local:9092"
+        - name: searchApplicationConfig.elasticsearch.url
+          value: "elasticsearch-es-http.{{ $infraNamespace }}.svc.cluster.local"
+        - name: backofficeBffExtraConfig.spring.data.redis.host
+          value: "redis-master.{{ $infraNamespace }}.svc.cluster.local"
+        - name: storefrontBffExtraConfig.spring.data.redis.host
+          value: "redis-master.{{ $infraNamespace }}.svc.cluster.local"
+  destination:
+    server: {{ $destinationServer | quote }}
+    namespace: {{ $namespace }}
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    managedNamespaceMetadata:
+      labels:
+        istio-injection: enabled
+    syncOptions:
+      - CreateNamespace=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: backoffice-bff-{{ $nameTag }}
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: {{ $project }}
+  source:
+    repoURL: {{ $repoURL }}
+    targetRevision: {{ $targetRevision }}
+    path: k8s-cd/charts/backoffice-bff
+    helm:
+      parameters:
+        - name: backend.ingress.enabled
+          value: "true"
+        - name: backend.ingress.host
+          value: {{ $backofficeHost }}
+        - name: global.domain
+          value: {{ $domain }}
+        - name: global.envTag
+          value: {{ $envTag | quote }}
+        - name: backend.image.tag
+          value: {{ index .Values.services "backoffice-bff" "tag" | default $appImageTag | quote }}
+        - name: backend.databaseConnectionUrl
+          value: "jdbc:postgresql://postgresql.{{ $infraNamespace }}.svc.cluster.local:5432"
+        - name: backofficeBffExtraConfig.spring.data.redis.host
+          value: "redis-master.{{ $infraNamespace }}.svc.cluster.local"
+  destination:
+    server: {{ $destinationServer | quote }}
+    namespace: {{ $namespace }}
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: backoffice-ui-{{ $nameTag }}
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "20"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: {{ $project }}
+  source:
+    repoURL: {{ $repoURL }}
+    targetRevision: {{ $targetRevision }}
+    path: k8s-cd/charts/backoffice-ui
+    helm:
+      parameters:
+        - name: ui.ingress.enabled
+          value: "true"
+        - name: ui.ingress.host
+          value: {{ $backofficeHost }}
+        - name: ui.extraEnvs[0].name
+          value: API_BASE_PATH
+        - name: ui.extraEnvs[0].value
+          value: "http://{{ $backofficeHost }}/api"
+        - name: ui.image.tag
+          value: {{ index .Values.services "backoffice-ui" "tag" | default $appImageTag | quote }}
+  destination:
+    server: {{ $destinationServer | quote }}
+    namespace: {{ $namespace }}
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: storefront-bff-{{ $nameTag }}
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: {{ $project }}
+  source:
+    repoURL: {{ $repoURL }}
+    targetRevision: {{ $targetRevision }}
+    path: k8s-cd/charts/storefront-bff
+    helm:
+      parameters:
+        - name: backend.ingress.enabled
+          value: "true"
+        - name: backend.ingress.host
+          value: {{ $storefrontHost }}
+        - name: global.domain
+          value: {{ $domain }}
+        - name: global.envTag
+          value: {{ $envTag | quote }}
+        - name: backend.image.tag
+          value: {{ index .Values.services "storefront-bff" "tag" | default $appImageTag | quote }}
+        - name: backend.databaseConnectionUrl
+          value: "jdbc:postgresql://postgresql.{{ $infraNamespace }}.svc.cluster.local:5432"
+        - name: storefrontBffExtraConfig.spring.data.redis.host
+          value: "redis-master.{{ $infraNamespace }}.svc.cluster.local"
+  destination:
+    server: {{ $destinationServer | quote }}
+    namespace: {{ $namespace }}
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: storefront-ui-{{ $nameTag }}
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "20"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: {{ $project }}
+  source:
+    repoURL: {{ $repoURL }}
+    targetRevision: {{ $targetRevision }}
+    path: k8s-cd/charts/storefront-ui
+    helm:
+      parameters:
+        - name: ui.ingress.enabled
+          value: "true"
+        - name: ui.ingress.host
+          value: {{ $storefrontHost }}
+        - name: ui.extraEnvs[0].name
+          value: API_BASE_PATH
+        - name: ui.extraEnvs[0].value
+          value: "http://storefront-bff/api"
+        - name: ui.image.tag
+          value: {{ index .Values.services "storefront-ui" "tag" | default $appImageTag | quote }}
+  destination:
+    server: {{ $destinationServer | quote }}
+    namespace: {{ $namespace }}
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: swagger-ui-{{ $nameTag }}
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "20"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: {{ $project }}
+  source:
+    repoURL: {{ $repoURL }}
+    targetRevision: {{ $targetRevision }}
+    path: k8s-cd/charts/swagger-ui
+    helm:
+      parameters:
+        - name: ingress.host
+          value: {{ $apiHost }}
+        - name: ingress.hosts[0].host
+          value: {{ $apiHost }}
+        - name: image.tag
+          value: {{ index .Values.services "swagger-ui" "tag" | default $appImageTag | quote }}
+  destination:
+    server: {{ $destinationServer | quote }}
+    namespace: {{ $namespace }}
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+{{- range $service := .Values.coreServices }}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ $service }}-{{ $nameTag }}
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: {{ $project }}
+  source:
+    repoURL: {{ $repoURL }}
+    targetRevision: {{ $targetRevision }}
+    path: k8s-cd/charts/{{ $service }}
+    helm:
+      parameters:
+        - name: backend.ingress.enabled
+          value: "true"
+        - name: backend.ingress.host
+          value: {{ $apiHost }}
+        - name: backend.ingress.path
+          value: "/{{ $service }}"
+        - name: global.domain
+          value: {{ $domain }}
+        - name: global.envTag
+          value: {{ $envTag | quote }}
+        - name: backend.image.tag
+          value: {{ index $.Values.services $service "tag" | default $appImageTag | quote }}
+        - name: backend.databaseConnectionUrl
+          value: "jdbc:postgresql://postgresql.{{ $infraNamespace }}.svc.cluster.local:5432"
+        - name: applicationConfig.spring.kafka.bootstrap-servers
+          value: "kafka-cluster-kafka-bootstrap.{{ $infraNamespace }}.svc.cluster.local:9092"
+        - name: applicationConfig.spring.kafka.consumer.bootstrap-servers
+          value: "kafka-cluster-kafka-bootstrap.{{ $infraNamespace }}.svc.cluster.local:9092"
+        - name: searchApplicationConfig.elasticsearch.url
+          value: "elasticsearch-es-http.{{ $infraNamespace }}.svc.cluster.local"
+  destination:
+    server: {{ $destinationServer | quote }}
+    namespace: {{ $namespace }}
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+{{- end }}

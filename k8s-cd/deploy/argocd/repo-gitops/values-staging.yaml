@@ -1,0 +1,68 @@
+# value-staging.yaml
+domain: "yas.staging.local"
+envTag: "staging"
+namespace: "yas-staging"
+infraNamespace: "yas-staging"
+repoURL: "https://github.com/BongLanTrungMuoi/Project-02.git"
+targetRevision: main # Thường sẽ trỏ tới một tag cụ thể hoặc branch release trong thực tế
+
+coreServices:
+  - product
+  - cart
+  - order
+  - customer
+  - inventory
+  - tax
+  - media
+  - search
+  - sampledata
+
+infra:
+  postgresql:
+    replicas: 1
+    username: yasadminuser
+    password: admin
+  kafka:
+    replicas: 1
+  zookeeper:
+    replicas: 1
+  elasticsearch:
+    replicas: 1
+  redis:
+    password: redis
+    chartVersion: "20.6.1"
+  akhq:
+    chartVersion: "0.25.1"
+  keycloak:
+    bootstrapAdmin:
+      username: admin
+      password: admin
+
+# Default image tags for staging
+global:
+  partOf: yas
+  argocdNamespace: argocd
+  project: default
+  destinationServer: https://kubernetes.default.svc
+  repoURL: https://github.com/BongLanTrungMuoi/Project-02.git
+  targetRevision: main
+  image:
+    tag: "v1.0.0" # Hoặc tag release tương ứng
+
+services:
+  yas-configuration: { tag: "v1.0.0" }
+  backoffice-bff: { tag: "v1.0.0" }
+  backoffice-ui: { tag: "v1.0.0" }
+  storefront-bff: { tag: "v1.0.0" }
+  storefront-ui: { tag: "v1.0.0" }
+  swagger-ui: { tag: "v5.32.6" }
+  cart: { tag: "v1.0.0" }
+  customer: { tag: "v1.0.0" }
+  inventory: { tag: "v1.0.0" }
+  media: { tag: "v1.0.0" }
+  order: { tag: "v1.0.0" }
+  payment: { tag: "v1.0.0" }
+  product: { tag: "v1.0.0" }
+  sampledata: { tag: "v1.0.0" }
+  search: { tag: "v1.0.0" }
+  tax: { tag: "v1.0.0" }
