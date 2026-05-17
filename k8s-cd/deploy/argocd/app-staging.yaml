@@ -13,7 +13,7 @@ spec:
     path: .
     helm:
       valueFiles:
-        - values-staging.yaml
+        - value-staging.yaml
   destination:
     server: "https://kubernetes.default.svc"
     namespace: argocd
