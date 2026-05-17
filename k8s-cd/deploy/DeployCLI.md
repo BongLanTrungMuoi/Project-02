@@ -21,6 +21,13 @@ cd k8s-cd/deploy/
 ./03-setup-argocd.sh
 ```
 
+Observability is disabled by default to save CPU/RAM. Enable it with:
+
+```bash
+ENABLE_OBSERVABILITY=true ./01-setup-operators.sh
+ENABLE_OBSERVABILITY=true ./02-setup-service-mesh.sh
+```
+
 By default, `02-setup-service-mesh.sh` prepares `yas-dev` and `yas-staging` for Istio. It maps `yas-dev` to `dev-13.yas.local.com` and `yas-staging` to `staging.yas.staging.local`; override with `YAS_MESH_NAMESPACES`, `DEV_ENV_TAG`, `DEV_DOMAIN`, `STAGING_ENV_TAG`, or `STAGING_DOMAIN` if needed.
 
 Sau bước này, Argo CD tự deploy phần data layer và application layer thay cho script `03` và `04`.
