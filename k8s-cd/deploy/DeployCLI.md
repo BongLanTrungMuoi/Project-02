@@ -10,19 +10,21 @@ minikube start --driver=docker --disk-size='80000mb' --memory='18g' --cpus='12' 
 minikube addons enable ingress
 ```
 
-## 1. Triển khai Hệ thống (Kiến trúc Hybrid)
+## 1. Triển khai Hệ thống (GitOps)
 
-Di chuyển vào thư mục `deploy` và chạy tuần tự các script theo đúng 4 giai đoạn:
+Di chuyển vào thư mục `deploy` và chạy bootstrap theo thứ tự:
 
 ```bash
 cd k8s-cd/deploy/
-export YAS_NAMESPACE="yas-52"
-export ENV_TAG="dev-52" 
 ./01-setup-operators.sh
 ./02-setup-service-mesh.sh
-./03-setup-data-layer.sh
-./04-deploy-apps.sh
+./03-setup-argocd.sh
 ```
+
+By default, `02-setup-service-mesh.sh` prepares `yas-dev` and `yas-staging` for Istio. It maps `yas-dev` to `dev-13.yas.local.com` and `yas-staging` to `staging.yas.staging.local`; override with `YAS_MESH_NAMESPACES`, `DEV_ENV_TAG`, `DEV_DOMAIN`, `STAGING_ENV_TAG`, or `STAGING_DOMAIN` if needed.
+
+Sau bước này, Argo CD tự deploy phần data layer và application layer thay cho script `03` và `04`.
+Các script manual cũ được giữ lại ở `save-03-setup-data-layer.sh` và `save-04-deploy-apps.sh` để dùng khi cần fallback/debug.
 
 ## 2. Service Mesh / Kiali sau khi deploy
 
@@ -35,7 +37,7 @@ Các manifest mTLS, retry, authorization policy và Prometheus monitor cho Kiali
 Mở Kiali:
 
 ```bash
-./07-open-kiali.sh
+./istio/script/open-kiali.sh
 ```
 
 Sau đó mở:
@@ -56,7 +58,7 @@ Display: Traffic, Security
 Tạo traffic để Kiali hiện topology:
 
 ```bash
-./05-generate-kiali-traffic.sh
+./istio/script/generate-kiali-traffic.sh
 ```
 
 Script này mặc định dùng:
@@ -71,7 +73,7 @@ SLEEP_SECONDS=1
 Nếu cần đổi:
 
 ```bash
-YAS_NAMESPACE=yas-52 ENV_TAG=dev-52 COUNT=60 SLEEP_SECONDS=1 ./05-generate-kiali-traffic.sh
+YAS_NAMESPACE=yas-52 ENV_TAG=dev-52 COUNT=60 SLEEP_SECONDS=1 ./istio/script/generate-kiali-traffic.sh
 ```
 
 ## 3. Evidence cho yêu cầu Service Mesh
@@ -79,13 +81,13 @@ YAS_NAMESPACE=yas-52 ENV_TAG=dev-52 COUNT=60 SLEEP_SECONDS=1 ./05-generate-kiali
 Chạy script này để tạo pod test, bắn traffic và ghi log evidence:
 
 ```bash
-./06-service-mesh-evidence.sh
+./istio/script/service-mesh-evidence.sh
 ```
 
 Hoặc dùng lệnh one-shot đầy đủ hơn, gồm cả retry thành công và retry thất bại:
 
 ```bash
-./08-service-mesh-one-shot.sh
+./istio/script/service-mesh-one-shot.sh
 ```
 
 Lệnh one-shot sẽ tạo thêm service demo tạm:
@@ -175,9 +177,9 @@ helm list -n "$YAS_NAMESPACE" -q | xargs -r helm uninstall -n "$YAS_NAMESPACE"
 kubectl delete ns "$YAS_NAMESPACE" --ignore-not-found=true
 ```
 
-## 6. Apply ArgoCD
+## 6. Apply ArgoCD Root Apps Manually
 ```bash
 cd k8s-cd/deploy
-kubectl apply -f root-app-dev.yaml
-kubectl apply -f root-app-staging.yaml
+kubectl apply -f argocd/app-dev.yaml
+kubectl apply -f argocd/app-staging.yaml
 ```

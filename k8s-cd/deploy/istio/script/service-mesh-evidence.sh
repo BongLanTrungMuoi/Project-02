@@ -2,9 +2,10 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+DEPLOY_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 NAMESPACE="${YAS_NAMESPACE:-yas-52}"
 POD_TTL_SECONDS="${POD_TTL_SECONDS:-300}"
-REPORT_DIR="${REPORT_DIR:-$SCRIPT_DIR/evidence}"
+REPORT_DIR="${REPORT_DIR:-$DEPLOY_DIR/evidence}"
 PRODUCT_OK_URL="${PRODUCT_OK_URL:-http://product/product/storefront/products}"
 PRODUCT_500_URL="${PRODUCT_500_URL:-http://product/product/actuator/health}"
 

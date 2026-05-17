@@ -4,7 +4,7 @@ File này ghi lại các phần cần sửa trong báo cáo để khớp với c
 
 ## Các điểm cần sửa
 
-1. **Application layer không còn deploy đầy đủ 19 service qua `04-deploy-apps.sh`.**
+1. **Application layer không còn deploy đầy đủ 19 service qua `save-04-deploy-apps.sh`.**
    Script hiện tại deploy:
    - `backoffice-bff`, `backoffice-ui`
    - `storefront-bff`, `storefront-ui`
@@ -37,7 +37,7 @@ File này ghi lại các phần cần sửa trong báo cáo để khớp với c
 
 ```md
 ### 4.4. Application layer (Phase 4)
-File `04-deploy-apps.sh` deploy các service cần thiết cho demo:
+File `save-04-deploy-apps.sh` deploy các service cần thiết cho demo:
 
 1. `yas-configuration` — chart tổng hợp ConfigMap/Secret + Stakater Reloader
 2. `backoffice-bff` + `backoffice-ui`
@@ -62,7 +62,7 @@ Mở Kiali:
 
 ```bash
 cd k8s-cd/deploy
-./07-open-kiali.sh
+./istio/script/open-kiali.sh
 ```
 
 Truy cập:
@@ -74,13 +74,13 @@ http://localhost:20001/kiali
 Tạo traffic:
 
 ```bash
-YAS_NAMESPACE=yas-52 ENV_TAG=dev-52 COUNT=60 SLEEP_SECONDS=1 ./05-generate-kiali-traffic.sh
+YAS_NAMESPACE=yas-52 ENV_TAG=dev-52 COUNT=60 SLEEP_SECONDS=1 ./istio/script/generate-kiali-traffic.sh
 ```
 
 Hoặc chạy một lệnh evidence đầy đủ cho AuthorizationPolicy và Retry:
 
 ```bash
-YAS_NAMESPACE=yas-52 POD_TTL_SECONDS=600 ./08-service-mesh-one-shot.sh
+YAS_NAMESPACE=yas-52 POD_TTL_SECONDS=600 ./istio/script/service-mesh-one-shot.sh
 ```
 
 Trong Kiali chọn:
@@ -138,7 +138,7 @@ Lưu ý: retry được thực hiện ở **caller sidecar**, không phải ở 
 Project có script:
 
 ```bash
-YAS_NAMESPACE=yas-52 POD_TTL_SECONDS=600 ./08-service-mesh-one-shot.sh
+YAS_NAMESPACE=yas-52 POD_TTL_SECONDS=600 ./istio/script/service-mesh-one-shot.sh
 ```
 
 Script tạo `retry-flaky` tạm thời. Service này cố ý trả `500, 500, 200`; khi gọi qua VirtualService retry, client nhận `200`, chứng minh retry policy hoạt động.
@@ -160,7 +160,7 @@ Chạy một lệnh để tạo pod test, gọi service, tạo traffic cho Kiali
 
 ```bash
 cd k8s-cd/deploy
-YAS_NAMESPACE=yas-52 POD_TTL_SECONDS=600 ./08-service-mesh-one-shot.sh
+YAS_NAMESPACE=yas-52 POD_TTL_SECONDS=600 ./istio/script/service-mesh-one-shot.sh
 ```
 
 Script tạo các pod tạm:
@@ -212,7 +212,7 @@ k8s-cd/deploy/evidence/retry-success-evidence.txt
 
 ```bash
 cd k8s-cd/deploy
-YAS_NAMESPACE=yas-52 POD_TTL_SECONDS=600 ./08-service-mesh-one-shot.sh
+YAS_NAMESPACE=yas-52 POD_TTL_SECONDS=600 ./istio/script/service-mesh-one-shot.sh
 
 kubectl get peerauthentication,destinationrule,virtualservice,authorizationpolicy -n yas-52
 kubectl get peerauthentication -n yas-52 -o yaml
@@ -223,4 +223,3 @@ cat evidence/auth-policy-test-3.txt
 cat evidence/retry-failure-evidence.txt
 cat evidence/retry-success-evidence.txt
 ```
-
