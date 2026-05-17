@@ -17,7 +17,6 @@ kubectl delete pod -A --field-selector status.phase=Failed
 
 echo ">>> 5. Triển khai lại Keycloak (để cập nhật config từ yq)..."
 # Chạy lại script setup keycloak
-./setup-keycloak.sh
 
 echo "========================================================="
 echo "XONG! Hãy đợi khoảng 1-2 phút để các PVC chuyển sang Bound"

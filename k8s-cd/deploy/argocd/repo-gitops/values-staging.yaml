@@ -47,22 +47,22 @@ global:
   repoURL: https://github.com/BongLanTrungMuoi/Project-02.git
   targetRevision: main
   image:
-    tag: "v1.0.0" # Hoặc tag release tương ứng
+    tag: "rc_v1.0.0" # Hoặc tag release tương ứng
 
 services:
-  yas-configuration: { tag: "v1.0.0" }
-  backoffice-bff: { tag: "v1.0.0" }
-  backoffice-ui: { tag: "v1.0.0" }
-  storefront-bff: { tag: "v1.0.0" }
-  storefront-ui: { tag: "v1.0.0" }
+  yas-configuration: { tag: "rc_v1.0.0" }
+  backoffice-bff: { tag: "rc_v1.0.0" }
+  backoffice-ui: { tag: "rc_v1.0.0" }
+  storefront-bff: { tag: "rc_v1.0.0" }
+  storefront-ui: { tag: "rc_v1.0.0" }
   swagger-ui: { tag: "v5.32.6" }
-  cart: { tag: "v1.0.0" }
-  customer: { tag: "v1.0.0" }
-  inventory: { tag: "v1.0.0" }
-  media: { tag: "v1.0.0" }
-  order: { tag: "v1.0.0" }
-  payment: { tag: "v1.0.0" }
-  product: { tag: "v1.0.0" }
-  sampledata: { tag: "v1.0.0" }
-  search: { tag: "v1.0.0" }
-  tax: { tag: "v1.0.0" }
+  cart: { tag: "rc_v1.0.0" }
+  customer: { tag: "rc_v1.0.0" }
+  inventory: { tag: "rc_v1.0.0" }
+  media: { tag: "rc_v1.0.0" }
+  order: { tag: "rc_v1.0.0" }
+  payment: { tag: "rc_v1.0.0" }
+  product: { tag: "rc_v1.0.0" }
+  sampledata: { tag: "rc_v1.0.0" }
+  search: { tag: "rc_v1.0.0" }
+  tax: { tag: "rc_v1.0.0" }
