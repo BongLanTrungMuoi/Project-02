@@ -1,3 +1,4 @@
+#search-ci.yaml
 name: search service ci
 
 on:

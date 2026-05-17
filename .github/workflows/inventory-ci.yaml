@@ -1,3 +1,5 @@
+#inventory-ci.yaml
+
 name: inventory service ci
 
 on:
