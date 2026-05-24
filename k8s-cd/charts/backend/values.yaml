@@ -25,6 +25,10 @@ serviceAccount:
 
 podAnnotations: {}
 
+tracing:
+  enabled: true
+  instrumentationRef: observability/yas-java
+
 podSecurityContext: {}
   # fsGroup: 2000
 

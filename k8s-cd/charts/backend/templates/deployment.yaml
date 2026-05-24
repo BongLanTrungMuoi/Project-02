@@ -18,10 +18,13 @@ spec:
       {{- include "backend.selectorLabels" . | nindent 6 }}
   template:
     metadata:
-      {{- with .Values.podAnnotations }}
       annotations:
+        {{- with .Values.podAnnotations }}
         {{- toYaml . | nindent 8 }}
-      {{- end }}
+        {{- end }}
+        {{- if .Values.tracing.enabled }}
+        instrumentation.opentelemetry.io/inject-java: {{ .Values.tracing.instrumentationRef | quote }}
+        {{- end }}
       labels:
         {{- include "backend.selectorLabels" . | nindent 8 }}
     spec:
